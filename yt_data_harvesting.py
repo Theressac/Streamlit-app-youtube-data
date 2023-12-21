@@ -117,7 +117,6 @@ def get_video_details(video_ids):
 
 
 #to get all the comment details
-#try except is not working properly need to check before submitting the project
 def get_comment_details(video_ids):
   Comments_list =[]
   try:
@@ -144,7 +143,6 @@ def get_comment_details(video_ids):
 
 
 #to get all the playlist details
-#UCuI5XcJYynHa5k_lqDzAgwQ
 def get_playlist_details(channel_id):
   playlist =[]
   next_page_token=None
@@ -189,10 +187,10 @@ def youtube_channels(channel_id):
                            "comment_information":comments_details})
 
 
-  return "upload successfully completed"
+  return "All the details have been inserted into the MongoDB"
 
 
-# Create tables for channels, playlists, videos and comments in postgresql
+# Create tables for channels in postgresql
 def create_channels_table():
     mydb = psycopg2.connect(host="localhost",
                           user="postgres",
@@ -250,8 +248,7 @@ def create_channels_table():
         cursor.execute(insert_query,values)
         mydb.commit()
 
-
-    # unable to fetche the total_videos from the API
+# Create tables for playlists in postgresql
 def create_playlist_table():
     mydb = psycopg2.connect(host="localhost",
                           user="postgres",
@@ -306,7 +303,7 @@ def create_playlist_table():
         cursor.execute(insert_query,values)
         mydb.commit()
 
-
+# Create tables for videos in postgresql
 def create_videos_table():
     mydb = psycopg2.connect(host="localhost",
                           user="postgres",
@@ -395,7 +392,7 @@ def create_videos_table():
 
 
 
-#Creation comments table
+# Create tables for ccomments in postgresql
 def create_comments_table():
     mydb = psycopg2.connect(host="localhost",
                           user="postgres",
@@ -448,20 +445,20 @@ def create_comments_table():
           mydb.commit()
 
 
-
+#Main funcction to call all the sub functions created above
 def tables_creation():
     create_channels_table()
     create_videos_table()
     create_comments_table()
     create_playlist_table()
 
-    return "Tables created successfully"
+    return "The data has been inserted into the Postgresql"
 
 
 
 Tables = tables_creation()
 
-
+#To show the channels list
 def view_channels_list():
     channel_list = []
     db = client["youtube_db"]
@@ -472,7 +469,7 @@ def view_channels_list():
     return df
 
 
-
+#To show the playlists list
 def view_playlist():
     playlist_list = []
     db = client["youtube_db"]
