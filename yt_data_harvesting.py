@@ -14,14 +14,10 @@ encoded_password = urllib.parse.quote_plus("Amarnath@06022014")
 uri = f"mongodb+srv://{encoded_username}:{encoded_password}@cluster0.inzqiif.mongodb.net/?retryWrites=true&w=majority"
 client = MongoClient(uri, server_api=ServerApi('1'))
 
-try:
-  client.admin.command('ping')
-  print("Pinged your deployment.You successfully connected to MongoDB!")
-except Exception as e:
-  print(e)
-
   #Create db in the Mongo DB
 db = client["youtube_db"]
+collection1 = db['channel_details']
+
 
 #This helps to connect to the API
 def main():
@@ -107,6 +103,7 @@ def get_video_details(video_ids):
                   Duration = item['contentDetails']['duration'],
                   Views_count = item['statistics'].get('viewCount'),
                   Like_count = item['statistics'].get('likeCount'),
+                  Dislike_count = item['statistics'].get('dislikeCount'),
                   Comments = item['statistics'].get('commentCount'),
                   Favorite_Count = item['statistics']['favoriteCount'],
                   Definition = item['contentDetails']['definition'],
@@ -182,16 +179,16 @@ def youtube_channels(channel_id):
 
   collections1 = db["channel_details"]
   collections1.insert_one({"channel_information":channel_details,
-                           "playlist_information":playlist_details,
+                          "playlist_information":playlist_details,
                            "video_information":video_details,
                            "comment_information":comments_details})
+  
 
-
-  return "All the details have been inserted into the MongoDB"
+  return "The data has been uploaded successfully in MongoDB"
 
 
 # Create tables for channels in postgresql
-def create_channels_table():
+def create_channels_table(ChannelName):
     mydb = psycopg2.connect(host="localhost",
                           user="postgres",
                           password="sa",
@@ -201,18 +198,13 @@ def create_channels_table():
     )
     cursor = mydb.cursor()
     
-    drop_query = '''drop table if exists channels'''
-    cursor.execute(drop_query)
-    mydb.commit()
-    
-   
     create_query='''create table if not exists channels(Channel_Id varchar(200) primary key,
-                                                    Channel_Name varchar(250),
-                                                    Subcription_Count bigint,
-                                                    Channel_Views bigint,
-                                                    Total_Videos bigint,
-                                                    Channel_Description text,
-                                                    Playlist_Id varchar(250))'''
+                                          Channel_Name varchar(250),
+                                          Subcription_Count bigint,
+                                          Channel_Views bigint,
+                                          Total_Videos bigint,
+                                          Channel_Description text,
+                                          Playlist_Id varchar(250))'''
     cursor.execute(create_query)
     mydb.commit()
 
@@ -221,7 +213,7 @@ def create_channels_table():
     channel_list = []
     db = client["youtube_db"]
     collections1 = db["channel_details"]
-    for data in collections1.find({},{"_id":0,"channel_information":1}):
+    for data in collections1.find({'channel_information.Channel_Name':ChannelName},{"_id":0,"channel_information":1}):
         channel_list.append(data["channel_information"])
     df_channels = pd.DataFrame(channel_list)
     
@@ -249,7 +241,7 @@ def create_channels_table():
         mydb.commit()
 
 # Create tables for playlists in postgresql
-def create_playlist_table():
+def create_playlist_table(ChannelName):
     mydb = psycopg2.connect(host="localhost",
                           user="postgres",
                           password="sa",
@@ -259,17 +251,13 @@ def create_playlist_table():
     )
     cursor = mydb.cursor()
     
-    drop_query = '''drop table if exists playlists'''
-    cursor.execute(drop_query)
-    mydb.commit()
-    
     
     create_query='''create table if not exists playlists(Playlist_Id varchar(250) primary key,
-                                                      Playlist_Title varchar(200),
-                                                      Channel_Id varchar(100),
-                                                      Channel_Name varchar(100),
-                                                      Published_Date timestamp,
-                                                      Video_Count int)'''
+                                           Playlist_Title varchar(200),
+                                           Channel_Id varchar(100),
+                                           Channel_Name varchar(100),
+                                           Published_Date timestamp,
+                                           Video_Count int)'''
                 
     cursor.execute(create_query)
     mydb.commit()
@@ -277,7 +265,7 @@ def create_playlist_table():
     playlist_list = []
     db = client["youtube_db"]
     collections1 = db["channel_details"]
-    for data in collections1.find({},{"_id":0,"playlist_information":1}):
+    for data in collections1.find({'channel_information.Channel_Name':ChannelName},{"_id":0,"playlist_information":1}):
       for i in range (len(data["playlist_information"])):
         playlist_list.append(data["playlist_information"][i])
     df_playlist = pd.DataFrame(playlist_list)
@@ -304,7 +292,7 @@ def create_playlist_table():
         mydb.commit()
 
 # Create tables for videos in postgresql
-def create_videos_table():
+def create_videos_table(ChannelName):
     mydb = psycopg2.connect(host="localhost",
                           user="postgres",
                           password="sa",
@@ -314,27 +302,24 @@ def create_videos_table():
     )
     cursor = mydb.cursor()
     
-    drop_query = '''drop table if exists videos'''
-    cursor.execute(drop_query)
-    mydb.commit()
-    
     
     create_query='''create table if not exists videos(Channel_Name varchar(250),
-                                                      Channel_Id varchar(200),
-                                                      Video_Id varchar(50) primary key,
-                                                      Title varchar(150),
-                                                      Tags text,
-                                                      Thumbnail varchar(200),
-                                                      Description text,
-                                                      Published_Date timestamp,
-                                                      Duration interval,
-                                                      Views_count bigint,
-                                                      Like_count bigint,
-                                                      Comments int,
-                                                      Favorite_Count int,
-                                                      Definition varchar(10),
-                                                      Caption_status varchar(50)
-                                                      )'''
+                                        Channel_Id varchar(200),
+                                        Video_Id varchar(50) primary key,
+                                        Title varchar(150),
+                                        Tags text,
+                                        Thumbnail varchar(200),
+                                        Description text,
+                                        Published_Date timestamp,
+                                        Duration interval,
+                                        Views_count bigint,
+                                        Like_count bigint,
+                                        Dislike_count bigint,
+                                        Comments int,
+                                        Favorite_Count int,
+                                        Definition varchar(10),
+                                        Caption_status varchar(50)
+                                        )'''
     
     
                 
@@ -345,7 +330,7 @@ def create_videos_table():
     video_list = []
     db = client["youtube_db"]
     collections1 = db["channel_details"]
-    for data in collections1.find({},{"_id":0,"video_information":1}):
+    for data in collections1.find({'channel_information.Channel_Name':ChannelName},{"_id":0,"video_information":1}):
       for i in range (len(data["video_information"])):
         video_list.append(data["video_information"][i])
     df_videolist = pd.DataFrame(video_list)
@@ -362,13 +347,14 @@ def create_videos_table():
                                                 Duration,
                                                 Views_count,
                                                 Like_count,
+                                                Dislike_count,
                                                 Comments,
                                                 Favorite_Count,
                                                 Definition,
                                                 Caption_status
                                                 )
                                                 
-                                                values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
+                                                values(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)'''
           values=(row['Channel_Name'],
                   row['Channel_Id'],
                   row['Video_Id'],
@@ -380,6 +366,7 @@ def create_videos_table():
                   row['Duration'],
                   row['Views_count'],
                   row['Like_count'],
+                  row['Dislike_count'],
                   row['Comments'],
                   row['Favorite_Count'],
                   row['Definition'],
@@ -393,7 +380,7 @@ def create_videos_table():
 
 
 # Create tables for ccomments in postgresql
-def create_comments_table():
+def create_comments_table(ChannelName):
     mydb = psycopg2.connect(host="localhost",
                           user="postgres",
                           password="sa",
@@ -403,16 +390,12 @@ def create_comments_table():
     )
     cursor = mydb.cursor()
     
-    drop_query = '''drop table if exists comments'''
-    cursor.execute(drop_query)
-    mydb.commit()
-    
     
     create_query='''create table if not exists comments(Comment_Id varchar(250) primary key,
-                                                      Video_Id varchar(100),
-                                                      Comment_Text text,
-                                                      Channel_Author varchar(150),
-                                                      Comment_Published timestamp)'''
+                                          Video_Id varchar(100),
+                                          Comment_Text text,
+                                          Channel_Author varchar(150),
+                                          Comment_Published timestamp)'''
                 
     cursor.execute(create_query)
     mydb.commit()
@@ -420,7 +403,7 @@ def create_comments_table():
     comment_list = []
     db = client["youtube_db"]
     collections1 = db["channel_details"]
-    for data in collections1.find({},{"_id":0,"comment_information":1}):
+    for data in collections1.find({'channel_information.Channel_Name':ChannelName},{"_id":0,"comment_information":1}):
       for i in range (len(data["comment_information"])):
         comment_list.append(data["comment_information"][i])
     df_commentlist = pd.DataFrame(comment_list)
@@ -446,17 +429,12 @@ def create_comments_table():
 
 
 #Main funcction to call all the sub functions created above
-def tables_creation():
-    create_channels_table()
-    create_videos_table()
-    create_comments_table()
-    create_playlist_table()
+def tables_creation(ChannelName):
+    create_channels_table(ChannelName)
+    create_videos_table(ChannelName)
+    create_comments_table(ChannelName)
+    create_playlist_table(ChannelName)
 
-    return "The data has been inserted into the Postgresql"
-
-
-
-Tables = tables_creation()
 
 #To show the channels list
 def view_channels_list():
@@ -509,36 +487,55 @@ def view_comments_list():
 #Streamlit codes
 
 
-st.set_page_config(layout="wide")
+st.set_page_config(page_title="Youtube Data Harvesting and Warehousing", layout="wide")
 
-st.header(":red[Youtube Data Harvesting and Warehousing Project]")
-
-
-selected = option_menu(
-menu_title =None,
-options=["Channel ID","Filter by category","Queries"],
-icons=["search","list","question-square-fill"],
-menu_icon="cast",
-default_index=0,
-orientation="horizontal",
-styles={
-   "container":{"padding":"0!important","background-color":"#2a9d8f","font-weight":"bold"},
-   "icon":{"color":"white","font-size":"25px"},
-   "nav-link":{
-      "font-size":"18px",
-      "text-align":"left",
-      "margin":"0px",
-      "--hover-color":"#eee",
-   },
-   "nav-link-selected":{"background-color":"#d4a373!important"}
-},
-)
+m = st.markdown("""
+<style>
+div.stButton > button{
+    background-color:#ff4b4b;
+    color:#ffffff;
+    border-color:none;
+}
+div.stButton > button:hover {
+    background-color: #ffffff;
+    color:#ff4b4b;
+    border-color:none;
+    }
+div.stSidebar > sidebar {
+    background-color: #83c5be;
+    color:#ffffff;
+    }
+</style>""", unsafe_allow_html=True)
 
 
-if selected == "Channel ID":
+
+
+st.title("Youtube data harvesting and warehousing")
+with st.sidebar:
+    selected = option_menu( "Menu", [
+        "Fetch data",
+        "Migrate to SQL",
+        "Filter by category",
+        "Queries"
+    ],
+    icons=["search","database","list","question-square-fill"])
+
+
+
+
+if selected == "Fetch data":
+  st.subheader("Fetch data from youtube and store in MongoDB")
   channel_id=st.text_input("Enter the channel ID")
+  if st.button("Fetch data from youtube"):
+  
+    channeldetails = get_channel_details(channel_id)
+    st.success(f'The channels data has been fetched successfully from youtube')
+    st.write(channeldetails)
 
-  if st.button("collect and store data"):
+
+
+
+  if st.button("Store data in MongoDB"):
       channel_ids=[]
       db = client["youtube_db"]
       collections1 = db["channel_details"]
@@ -546,14 +543,21 @@ if selected == "Channel ID":
           channel_ids.append(channel_data["channel_information"]["Channel_Id"])
       
       if channel_id in channel_ids:
-          st.success("The given channel details exist alerady in the MongoDB")
+          st.success("The given channel details exist already in the MongoDB")
       else:
           insert = youtube_channels(channel_id)
           st.success(insert)
 
-  if st.button("Migrate to SQL"):
-      Table=tables_creation()
-      st.success(Table)
+elif selected == "Migrate to SQL":
+    st.subheader("Data Migration from MongoDB to Postgresql")
+    db = client["youtube_db"]
+    collections1 = db["channel_details"]
+    available_channel_ids = collections1.distinct("channel_information.Channel_Name")
+    channelName = st.selectbox("Select the Channel Name from Mongodb", available_channel_ids)
+
+    if st.button("Migrate to SQL"):
+      tables_creation(channelName)
+      st.success("The data has been migrated successfully")
 
 
 elif selected == "Filter by category":
@@ -593,7 +597,7 @@ elif selected == "Queries":
                                                 "4. How many comments were made on each video, and what are their corresponding video names?",
                                                 "5. Which videos have the highest number of likes, and what are their corresponding channel names?",
                                                 "6. What is the total number of likes and dislikes for each video, and what are their corresponding video names?",
-                                                "7. What is the total number of videos for each channel, and what are their corresponding channel names?",
+                                                "7. What is the total number of views for each channel, and what are their corresponding channel names?",
                                                 "8. What are the names of all the channels that have published videos in the year 2022?",
                                                 "9. What is the average duration of all videos in each channel, and what are their corresponding channel names?",
                                                 "10.Which videos have the highest number of comments, and what are their corresponding channel names?"))
@@ -601,7 +605,7 @@ elif selected == "Queries":
   #Query 1
 
   if question == "1. What are the names of all the videos and their corresponding channels?":
-      query1 = '''select title,channel_name from videos'''
+      query1 = '''select title,channel_name from videos order by channel_name'''
       cursor.execute(query1)
       mydb.commit()
       responsequery = cursor.fetchall()
@@ -625,11 +629,11 @@ elif selected == "Queries":
       st.write(df_query3)
 
   elif question == "4. How many comments were made on each video, and what are their corresponding video names?":
-      query4 = '''select comments,title from videos where comments is not null'''
+      query4 = '''select comments,title,channel_name from videos where comments is not null order by channel_name'''
       cursor.execute(query4)
       mydb.commit()
       responsequery = cursor.fetchall()
-      df_query4=pd.DataFrame(responsequery,columns=["No of comments","Video title"])
+      df_query4=pd.DataFrame(responsequery,columns=["No of comments","Video title","Channel name"])
       st.write(df_query4)
 
   elif question == "5. Which videos have the highest number of likes, and what are their corresponding channel names?":
@@ -641,16 +645,16 @@ elif selected == "Queries":
       st.write(df_query5)
 
   elif question == "6. What is the total number of likes and dislikes for each video, and what are their corresponding video names?":
-      query6 = '''select title, like_count from videos'''
+      query6 = '''select title, like_count,Dislike_count from videos'''
       cursor.execute(query6)
       mydb.commit()
       responsequery = cursor.fetchall()
-      df_query6=pd.DataFrame(responsequery,columns=["Video title","Like count"])
+      df_query6=pd.DataFrame(responsequery,columns=["Video title","Like count","Dislike count"])
       st.write(df_query6)
 
   #Question 7
-  elif question == "7. What is the total number of videos for each channel, and what are their corresponding channel names?":
-      query7 = '''select channel_name, channel_views from channels'''
+  elif question == "7. What is the total number of views for each channel, and what are their corresponding channel names?":
+      query7 = '''select channel_name, channel_views from channels order by channel_views desc'''
       cursor.execute(query7)
       mydb.commit()
       responsequery = cursor.fetchall()
@@ -667,8 +671,9 @@ elif selected == "Queries":
       st.write(df_query8)
 
   #Question 9
-  elif question == "What is the average duration of all videos in each channel, and what are their corresponding channel names?":
+  elif question == "9. What is the average duration of all videos in each channel, and what are their corresponding channel names?":
       query9 = '''select channel_name, AVG(duration) as avg_duration from videos group by channel_name'''
+      
       cursor.execute(query9)
       mydb.commit()
       responsequery = cursor.fetchall()
@@ -677,7 +682,7 @@ elif selected == "Queries":
       for index,row in df_query9.iterrows():
         channel_title = row["Channel name"]
         average_duration = str(row["Average duration"])
-        split_response.append(dict(ChannelTitle=channel_title,avgduration=average_duration))
+        split_response.append(dict(ChannelTitle=channel_title,AverageDuration=average_duration))
       df_query9_string = pd.DataFrame(split_response)
       st.write(df_query9_string)
 
