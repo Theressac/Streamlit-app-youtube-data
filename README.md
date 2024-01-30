@@ -31,6 +31,7 @@ Installation
 Usage
 
    To use this project, kindly follow the following steps:
+   
         1.	Clone the repository: git clone https://github.com/Theressac/Streamlit-app-youtube-data
         2.	Install the required packages
         3.	Run the Streamlit app: streamlit run yt_data_harvesting.py
